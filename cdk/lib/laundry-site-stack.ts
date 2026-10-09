@@ -262,21 +262,14 @@ exports.handler = async (event, context) => {
       { protocolPolicy: cloudfront.OriginProtocolPolicy.HTTPS_ONLY },
     );
 
-    // Central traffic monitoring (dliu-com/traffic-monitor): access logs + shared visitor cookie.
-    const trafficLogBucket = s3.Bucket.fromBucketAttributes(this, 'TrafficLogs', {
-      bucketName: Fn.importValue('TrafficLogBucketName'),
-      region: 'eu-west-1',
-    });
+    // Central traffic monitoring (dliu-com/traffic-monitor): shared visitor cookie; TrafficMonitor
+    // creates this distribution's access-log delivery (CloudFront standard logging v2).
     const visitorIdFunction = cloudfront.Function.fromFunctionAttributes(this, 'VisitorId', {
       functionArn: Fn.importValue('TrafficVisitorFunctionArn'),
       functionName: 'dliu-visitor-id',
     });
 
     const distribution = new cloudfront.Distribution(this, 'SiteDistribution', {
-      enableLogging: true,
-      logBucket: trafficLogBucket,
-      logFilePrefix: 'raw/home/',
-      logIncludesCookies: true,
       defaultBehavior: {
         origin: origins.S3BucketOrigin.withOriginAccessIdentity(siteBucket, { originAccessIdentity }),
         viewerProtocolPolicy: cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
@@ -301,6 +294,9 @@ exports.handler = async (event, context) => {
         { httpStatus: 404, responseHttpStatus: 404, responsePagePath: '/404.html', ttl: Duration.minutes(5) },
       ],
     });
+    // IncludeCookies is the only legacy logging setting v2 honours: it puts the dl_vid cookie in the logs.
+    (distribution.node.defaultChild as cloudfront.CfnDistribution)
+      .addPropertyOverride('DistributionConfig.Logging', { IncludeCookies: true });
 
     siteBucket.grantRead(originAccessIdentity);
     new s3deploy.BucketDeployment(this, 'DeploySiteFiles', {
