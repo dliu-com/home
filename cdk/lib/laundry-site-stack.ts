@@ -262,12 +262,27 @@ exports.handler = async (event, context) => {
       { protocolPolicy: cloudfront.OriginProtocolPolicy.HTTPS_ONLY },
     );
 
+    // Central traffic monitoring (dliu-com/traffic-monitor): access logs + shared visitor cookie.
+    const trafficLogBucket = s3.Bucket.fromBucketAttributes(this, 'TrafficLogs', {
+      bucketName: Fn.importValue('TrafficLogBucketName'),
+      region: 'eu-west-1',
+    });
+    const visitorIdFunction = cloudfront.Function.fromFunctionAttributes(this, 'VisitorId', {
+      functionArn: Fn.importValue('TrafficVisitorFunctionArn'),
+      functionName: 'dliu-visitor-id',
+    });
+
     const distribution = new cloudfront.Distribution(this, 'SiteDistribution', {
+      enableLogging: true,
+      logBucket: trafficLogBucket,
+      logFilePrefix: 'raw/home/',
+      logIncludesCookies: true,
       defaultBehavior: {
         origin: origins.S3BucketOrigin.withOriginAccessIdentity(siteBucket, { originAccessIdentity }),
         viewerProtocolPolicy: cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
         allowedMethods: cloudfront.AllowedMethods.ALLOW_GET_HEAD,
         cachedMethods: cloudfront.CachedMethods.CACHE_GET_HEAD,
+        functionAssociations: [{ eventType: cloudfront.FunctionEventType.VIEWER_RESPONSE, function: visitorIdFunction }],
       },
       additionalBehaviors: {
         'api/*': {
