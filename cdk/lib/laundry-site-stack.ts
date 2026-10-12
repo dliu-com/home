@@ -268,6 +268,9 @@ exports.handler = async (event, context) => {
       functionArn: Fn.importValue('TrafficVisitorFunctionArn'),
       functionName: 'dliu-visitor-id',
     });
+    // Makes CloudFront add CloudFront-Viewer-City so the visitor function can log the city.
+    const trafficGeoPolicy = cloudfront.OriginRequestPolicy.fromOriginRequestPolicyId(
+      this, 'TrafficGeo', Fn.importValue('TrafficGeoOriginRequestPolicyId'));
 
     const distribution = new cloudfront.Distribution(this, 'SiteDistribution', {
       defaultBehavior: {
@@ -275,6 +278,7 @@ exports.handler = async (event, context) => {
         viewerProtocolPolicy: cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
         allowedMethods: cloudfront.AllowedMethods.ALLOW_GET_HEAD,
         cachedMethods: cloudfront.CachedMethods.CACHE_GET_HEAD,
+        originRequestPolicy: trafficGeoPolicy,
         functionAssociations: [{ eventType: cloudfront.FunctionEventType.VIEWER_RESPONSE, function: visitorIdFunction }],
       },
       additionalBehaviors: {
