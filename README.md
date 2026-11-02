@@ -45,22 +45,6 @@ make synth
 make deploy
 ```
 
-## GitHub Actions deployment
+## Deployment
 
-The deployment workflow is stored in `.github/workflows/deploy.yml`. It runs the tests and deploys the existing `LaundrySite` CloudFormation stack in `eu-west-1` whenever a commit is pushed to `main`. It can also be started manually from the repository's **Actions** tab.
-
-Configure these two GitHub Actions repository secrets before running the workflow:
-
-- `AWS_ACCESS_KEY_ID`
-- `AWS_SECRET_ACCESS_KEY`
-
-In GitHub, open the `home` repository and go to **Settings → Secrets and variables → Actions → New repository secret**. Add each value under its exact name. Use a dedicated AWS deployment identity with only the permissions needed for this CDK stack; never use AWS root-account credentials.
-
-The same secrets can be added with GitHub CLI. Each command securely prompts for the value:
-
-```sh
-gh secret set AWS_ACCESS_KEY_ID
-gh secret set AWS_SECRET_ACCESS_KEY
-```
-
-Credentials stored in the local AWS configuration are not automatically available to GitHub-hosted runners. Do not commit credentials, `.env` files, or AWS configuration files to this repository.
+Deploy from a machine with AWS credentials for the account by running `make deploy`. It runs `cdk deploy` for the `LaundrySite` stack in `eu-west-1`. There is no CI deployment pipeline.
