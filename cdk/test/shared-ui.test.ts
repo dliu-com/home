@@ -28,11 +28,10 @@ test('every page has the shared header, the same menu, and the shared footer', (
   for (const file of pages) {
     const page = read(file);
     expect(page).toContain('<body class="dl-page">');
-    expect(page).toContain(`<a class="dl-logo" href="https://dliu.com" aria-label="dliu.com"><img src="${DL_ICON}"`);
-    expect(page).toContain('<a class="dl-brand" href="/">Home Tasks</a>');
+    expect(page).toContain(`<a class="dl-brand" href="/"><img class="dl-logo" src="${DL_ICON}" alt="" width="32" height="32">Home Tasks</a>`);
     expect(navOf(page)).toBe(menu);
     expect(page).toMatch(/<main class="dl-main[" ]/);
-    expect(page).toContain('<footer class="dl-footer"><a href="https://dliu.com">dliu.com</a>');
+    expect(page).toMatch(new RegExp(`<footer class="dl-footer">\\s*<a class="dl-footer-logo" href="https://dliu.com" aria-label="dliu.com"><img src="${DL_ICON}" alt="" width="24" height="24"></a>\\s*<a href="https://dliu.com">dliu.com</a>`));
   }
   expect(read('laundry.html')).toContain('<a class="dl-nav-link" href="/laundry.html" aria-current="page">');
 });

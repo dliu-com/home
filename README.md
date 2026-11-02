@@ -20,8 +20,8 @@ The project follows the `home-site` layout:
 
 Every page uses the shared dliu.com look ([spec](https://files.dliu.com/dliu.com/README.md), [demo](https://files.dliu.com/dliu.com/ui/v1/demo.html)):
 
-- `https://files.dliu.com/dliu.com/ui/v1/dl.css` loads first, then `/styles.css`. The DL icon `https://files.dliu.com/dliu.com/favicon.png` is the favicon and header logo.
-- Pages use the shared `dl-header` (logo, `Home Tasks` brand, `dl-nav`), `dl-main`, `dl-footer`, `dl-card`, `dl-button` and `dl-error`/`dl-success` classes. Light theme only, no shared JavaScript.
+- `https://files.dliu.com/dliu.com/ui/v1/dl.css` loads first, then `/styles.css`. The site has no logo of its own, so the DL icon `https://files.dliu.com/dliu.com/favicon.png` is its favicon and header logo.
+- Pages use the shared `dl-header` (logo and `Home Tasks` in one `dl-brand` link, then `dl-nav`), `dl-main`, `dl-footer` (starting with the shared DL logo, `dl-footer-logo`), `dl-card`, `dl-button` and `dl-error`/`dl-success` classes. Light theme only, no shared JavaScript.
 - `src/styles.css` keeps only app-specific rules and uses the `--dl-*` variables, with no colours of its own.
 - When adding a page, copy the header and footer from an existing page and add it to the nav on every page. `cdk/test/shared-ui.test.ts` guards this.
 
