@@ -2,59 +2,66 @@
 <html lang="en">
 
 <head>
-    <meta charset="UTF-8">
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <title>Home Tasks</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css">
-    <link rel="stylesheet" href="/styles.css">
-    <script src="/menu.js" defer></script>
     <link rel="icon" type="image/png" href="https://files.dliu.com/dliu.com/favicon.png">
-    <meta name="theme-color" content="#40B1FA">
+    <link rel="stylesheet" href="https://files.dliu.com/dliu.com/ui/v1/dl.css">
+    <link rel="stylesheet" href="/styles.css">
 </head>
 
-<body>
-    <main class="w3-container page home-page">
+<body class="dl-page">
+    <header class="dl-header">
+        <a class="dl-logo" href="https://dliu.com" aria-label="dliu.com"><img src="https://files.dliu.com/dliu.com/favicon.png" alt="DL" width="32" height="32"></a>
+        <a class="dl-brand" href="/">Home Tasks</a>
+        <nav class="dl-nav" aria-label="Site">
+            <a class="dl-nav-link" href="/laundry.html">Laundry</a>
+            <a class="dl-nav-link" href="/guinea-pigs.html">Guinea pigs</a>
+            <a class="dl-nav-link" href="/hang-clothes.html">Hang clothes</a>
+            <a class="dl-nav-link" href="/kaka-teeth.html">Kaka's teeth</a>
+            <a class="dl-nav-link" href="/rules.html">Rules</a>
+        </nav>
+    </header>
+    <main class="dl-main dl-narrow">
         <h1>Home Tasks</h1>
-
-        <site-menu></site-menu>
 
         <p>Choose a task to record it, check its schedule, or view its history.</p>
 
         <section class="task-grid" aria-label="Home tasks">
-            <article class="task-card">
+            <article class="dl-card task-card">
                 <h2>Laundry</h2>
                 <p>Record when the laundry is started. Every 40 hours.</p>
-                <a class="w3-button w3-blue w3-round task-record-link" href="/laundry.html">
+                <a class="dl-button dl-button-primary task-record-link" href="/laundry.html">
                     Record 洗衣服
                 </a>
             </article>
 
-            <article class="task-card">
+            <article class="dl-card task-card">
                 <h2>Guinea pig cleaning</h2>
                 <p>Clean the cage and surrounding kitchen area for all six guinea pigs. Every 70 hours.</p>
-                <a class="w3-button w3-blue w3-round task-record-link" href="/guinea-pigs.html">
+                <a class="dl-button dl-button-primary task-record-link" href="/guinea-pigs.html">
                     Record 打扫猪猪
                 </a>
             </article>
 
-            <article class="task-card">
+            <article class="dl-card task-card">
                 <h2>Hang clothes</h2>
                 <p>Record after hanging up the clothes. Every 45 hours.</p>
-                <a class="w3-button w3-blue w3-round task-record-link" href="/hang-clothes.html">
+                <a class="dl-button dl-button-primary task-record-link" href="/hang-clothes.html">
                     Record 晾衣服
                 </a>
             </article>
 
-            <article class="task-card">
+            <article class="dl-card task-card">
                 <h2>Brush Kaka's teeth</h2>
                 <p>Record after brushing Kaka's teeth. Every 100 hours.</p>
-                <a class="w3-button w3-blue w3-round task-record-link" href="/kaka-teeth.html">
+                <a class="dl-button dl-button-primary task-record-link" href="/kaka-teeth.html">
                     Record Kaka 刷牙
                 </a>
             </article>
         </section>
 
-        <section class="home-rules" aria-labelledby="home-rules-heading">
+        <section class="dl-card home-rules" aria-labelledby="home-rules-heading">
             <h2 id="home-rules-heading">Rules</h2>
             <ul>
                 <li>Laundry must be recorded within every rolling 40 hours.</li>
@@ -67,8 +74,8 @@
             </ul>
             <p><a href="/rules.html">Read the full task rules</a></p>
         </section>
-        <p class="footer"><a href="https://dliu.com">Back to dliu.com</a></p>
     </main>
+    <footer class="dl-footer"><a href="https://dliu.com">dliu.com</a> · <a href="/rules.html">Rules</a></footer>
 </body>
 
 </html>

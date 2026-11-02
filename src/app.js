@@ -135,7 +135,7 @@ function renderTimestamps(controller, records) {
         if (Date.now() - date.getTime() < oneHourInMilliseconds) {
             const deleteButton = document.createElement("button");
             deleteButton.type = "button";
-            deleteButton.className = "w3-button w3-small w3-light-grey w3-round delete-button";
+            deleteButton.className = "dl-button dl-button-small dl-button-danger delete-button";
             deleteButton.textContent = "Delete";
             deleteButton.setAttribute(
                 "aria-label",
@@ -250,7 +250,7 @@ function setBusy(controller, busy) {
 
 function showMessage(controller, text, type = "") {
     controller.message.textContent = text;
-    controller.message.className = `message ${type}`.trim();
+    controller.message.className = type ? `message dl-${type}` : "message";
 }
 
 setInterval(() => {
