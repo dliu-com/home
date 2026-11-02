@@ -16,6 +16,13 @@ The project follows the `home-site` layout:
 - DynamoDB atomically rejects attempts made within one hour of the previous record for the same task.
 - The DynamoDB table is retained if the CloudFormation stack is deleted.
 
+## Caching
+
+- **Edge (CloudFront):** HTTP/2 and HTTP/3 are enabled. `app.js`, `menu.js` and `styles.css` are uploaded with `Cache-Control: public, max-age=300, s-maxage=86400, stale-while-revalidate=86400`, so browsers keep them for 5 minutes and CloudFront for up to 1 day. HTML pages have no `Cache-Control` header and use CloudFront's default caching (up to 1 day at the edge).
+- **API:** `/api/*` is never cached (`CachingDisabled` policy, and responses send `cache-control: no-store`).
+- **Clearing:** every deploy invalidates `/*` once, so changes show immediately.
+- **Automatic clearing (S3 events → CloudFront invalidation): not used.** The site bucket only changes through deploys, which already clear the whole cache. Task records live in DynamoDB, not S3. Adding automatic clearing would only spend the 1,000 free invalidation paths a month that all dliu.com sites share. Don't edit the bucket by hand; if you do, run a CloudFront invalidation yourself.
+
 ## Cost model
 
 The stack avoids provisioned servers, NAT gateways, load balancers, API Gateway, and other resources with meaningful fixed monthly fees. Lambda, DynamoDB on-demand, S3, and CloudFront are charged according to requests, storage, execution time, and data transfer. The ACM certificate is free, and the Route 53 hosted zone is imported from the existing dliu.com infrastructure rather than created by this stack.
