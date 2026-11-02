@@ -292,6 +292,7 @@ exports.handler = async (event, context) => {
       },
       domainNames: [domainName],
       certificate,
+      httpVersion: cloudfront.HttpVersion.HTTP2_AND_3,
       defaultRootObject: 'index.html',
       errorResponses: [
         { httpStatus: 403, responseHttpStatus: 404, responsePagePath: '/404.html', ttl: Duration.minutes(5) },
@@ -303,12 +304,32 @@ exports.handler = async (event, context) => {
       .addPropertyOverride('DistributionConfig.Logging', { IncludeCookies: true });
 
     siteBucket.grantRead(originAccessIdentity);
-    new s3deploy.BucketDeployment(this, 'DeploySiteFiles', {
+    const siteSource = s3deploy.Source.asset(path.join(__dirname, '..', '..', 'src'));
+
+    // HTML keeps the default caching; JS/CSS are invalidated on every deploy, so the edge may
+    // cache them for a day.
+    const staticFiles = new s3deploy.BucketDeployment(this, 'DeployStaticFiles', {
       destinationBucket: siteBucket,
-      sources: [s3deploy.Source.asset(path.join(__dirname, '..', '..', 'src'))],
+      sources: [siteSource],
+      exclude: ['*.html'],
+      cacheControl: [
+        s3deploy.CacheControl.setPublic(),
+        s3deploy.CacheControl.maxAge(Duration.minutes(5)),
+        s3deploy.CacheControl.sMaxAge(Duration.days(1)),
+        s3deploy.CacheControl.fromString('stale-while-revalidate=86400'),
+      ],
       distribution,
       distributionPaths: ['/*'],
     });
+    const htmlFiles = new s3deploy.BucketDeployment(this, 'DeploySiteFiles', {
+      destinationBucket: siteBucket,
+      sources: [siteSource],
+      exclude: ['*'],
+      include: ['*.html'],
+      distribution,
+      distributionPaths: ['/*'],
+    });
+    htmlFiles.node.addDependency(staticFiles);
 
     new route53.ARecord(this, 'SiteAliasRecord', {
       zone: hostedZone,

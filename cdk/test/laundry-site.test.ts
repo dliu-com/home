@@ -37,7 +37,19 @@ test('creates the static site and timestamp API', () => {
       Aliases: Match.anyValue(),
       DefaultRootObject: 'index.html',
       Enabled: true,
+      HttpVersion: 'http2and3',
     }),
+  });
+  template.hasResourceProperties('Custom::CDKBucketDeployment', {
+    Exclude: ['*.html'],
+    SystemMetadata: {
+      'cache-control': 'public, max-age=300, s-maxage=86400, stale-while-revalidate=86400',
+    },
+  });
+  template.hasResourceProperties('Custom::CDKBucketDeployment', {
+    Exclude: ['*'],
+    Include: ['*.html'],
+    SystemMetadata: Match.absent(),
   });
   template.hasResourceProperties('AWS::Route53::RecordSet', {
     Type: 'A',
