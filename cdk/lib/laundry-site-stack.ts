@@ -272,6 +272,20 @@ exports.handler = async (event, context) => {
     const trafficGeoPolicy = cloudfront.OriginRequestPolicy.fromOriginRequestPolicyId(
       this, 'TrafficGeo', Fn.importValue('TrafficGeoOriginRequestPolicyId'));
 
+    // Serves the extensionless /docs page from docs.html in the bucket.
+    const pageRoutes = new cloudfront.Function(this, 'PageRoutes', {
+      runtime: cloudfront.FunctionRuntime.JS_2_0,
+      code: cloudfront.FunctionCode.fromInline(`
+function handler(event) {
+  var request = event.request;
+  if (request.uri === '/docs' || request.uri === '/docs/') {
+    request.uri = '/docs.html';
+  }
+  return request;
+}
+`),
+    });
+
     const distribution = new cloudfront.Distribution(this, 'SiteDistribution', {
       defaultBehavior: {
         origin: origins.S3BucketOrigin.withOriginAccessIdentity(siteBucket, { originAccessIdentity }),
@@ -279,7 +293,10 @@ exports.handler = async (event, context) => {
         allowedMethods: cloudfront.AllowedMethods.ALLOW_GET_HEAD,
         cachedMethods: cloudfront.CachedMethods.CACHE_GET_HEAD,
         originRequestPolicy: trafficGeoPolicy,
-        functionAssociations: [{ eventType: cloudfront.FunctionEventType.VIEWER_RESPONSE, function: visitorIdFunction }],
+        functionAssociations: [
+          { eventType: cloudfront.FunctionEventType.VIEWER_REQUEST, function: pageRoutes },
+          { eventType: cloudfront.FunctionEventType.VIEWER_RESPONSE, function: visitorIdFunction },
+        ],
       },
       additionalBehaviors: {
         'api/*': {

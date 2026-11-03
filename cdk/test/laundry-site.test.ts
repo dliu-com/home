@@ -55,3 +55,33 @@ test('creates the static site and timestamp API', () => {
     Type: 'A',
   });
 });
+
+test('a viewer-request function serves /docs from docs.html', () => {
+  const app = new App();
+  const stack = new LaundrySiteStack(app, 'LaundryRoutesTestStack', {
+    env: { account: '123456789012', region: 'eu-west-2' },
+  });
+  const template = Template.fromStack(stack);
+
+  const functions = template.findResources('AWS::CloudFront::Function');
+  const [logicalId, routes] = Object.entries(functions)[0] as [string, any];
+  expect(Object.keys(functions)).toHaveLength(1);
+  expect(routes.Properties.FunctionConfig.Runtime).toBe('cloudfront-js-2.0');
+  const handler = new Function(`${routes.Properties.FunctionCode}; return handler;`)();
+  const route = (uri: string) => handler({ request: { uri } }).uri;
+  expect(route('/docs')).toBe('/docs.html');
+  expect(route('/docs/')).toBe('/docs.html');
+  expect(route('/')).toBe('/');
+  expect(route('/rules.html')).toBe('/rules.html');
+  expect(route('/docs.html')).toBe('/docs.html');
+
+  template.hasResourceProperties('AWS::CloudFront::Distribution', {
+    DistributionConfig: Match.objectLike({
+      DefaultCacheBehavior: Match.objectLike({
+        FunctionAssociations: Match.arrayWith([
+          { EventType: 'viewer-request', FunctionARN: { 'Fn::GetAtt': [logicalId, 'FunctionARN'] } },
+        ]),
+      }),
+    }),
+  });
+});

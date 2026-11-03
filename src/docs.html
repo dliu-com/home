@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <title>Docs · Home Tasks</title>
+    <meta name="description" content="How home.dliu.com works: technical architecture, task rules, cost and security">
+    <link rel="icon" type="image/png" href="https://files.dliu.com/dliu.com/favicon.png">
+    <link rel="stylesheet" href="https://files.dliu.com/dliu.com/ui/v1/dl.css">
+    <link rel="stylesheet" href="https://files.dliu.com/dliu.com/ui/v1/dl-docs.css">
+    <link rel="stylesheet" href="/styles.css">
+</head>
+
+<body class="dl-page">
+    <header class="dl-header">
+        <a class="dl-brand" href="/"><img class="dl-logo" src="https://files.dliu.com/dliu.com/favicon.png" alt="" width="32" height="32">Home Tasks</a>
+        <nav class="dl-nav" aria-label="Site">
+            <a class="dl-nav-link" href="/laundry.html">Laundry</a>
+            <a class="dl-nav-link" href="/guinea-pigs.html">Guinea pigs</a>
+            <a class="dl-nav-link" href="/hang-clothes.html">Hang clothes</a>
+            <a class="dl-nav-link" href="/kaka-teeth.html">Kaka's teeth</a>
+            <a class="dl-nav-link" href="/rules.html">Rules</a>
+            <a class="dl-button" href="/docs" aria-current="page">Docs</a>
+        </nav>
+    </header>
+    <main class="dl-main dl-docs-main">
+        <nav class="dl-tabs" aria-label="Docs sections">
+            <a href="/docs#architecture" aria-current="page">Technical architecture</a>
+            <a href="/docs#tasks">How tasks work</a>
+            <a href="/docs#cost">Cost</a>
+            <a href="/docs#security">Security</a>
+        </nav>
+
+        <article class="dl-docs" id="architecture">
+            <h1>Technical architecture</h1>
+            <p class="lead">Home Tasks records when recurring jobs at home were last done: laundry, guinea pig cleaning, hanging clothes and brushing Kaka's teeth. The pages are static files; one small Lambda function records, lists and deletes the times, and nothing runs while nobody is using the site.</p>
+            <div class="dg-stats">
+                <div class="dg-stat"><span class="dg-text"><strong>0</strong><small>servers: nothing runs between visits</small></span></div>
+                <div class="dg-stat"><span class="dg-text"><strong>1</strong><small>Lambda function for the whole API</small></span></div>
+                <div class="dg-stat"><span class="dg-text"><strong>4</strong><small>tasks, each with its own rolling target</small></span></div>
+                <div class="dg-stat"><span class="dg-text"><strong>1 h</strong><small>minimum gap between two records of a task</small></span></div>
+            </div>
+
+            <h2>Components</h2>
+            <div class="dg-tier"><div class="dg-tier-label"><strong>Browser</strong></div><div class="dg-tier-nodes">
+                <div class="dg-node dg-untrusted"><span class="dg-text"><strong>Visitor</strong><small>static pages and <code>app.js</code>, which calls <code>/api/timestamps</code></small></span></div>
+            </div></div>
+            <div class="dg-tier"><div class="dg-tier-label"><strong>Edge</strong></div><div class="dg-tier-nodes">
+                <div class="dg-node dg-edge"><span class="dg-text"><strong>CloudFront home.dliu.com</strong><small>HTTPS only, HTTP/2 and HTTP/3; caches the pages and sends <code>/api/*</code> to Lambda uncached</small></span></div>
+            </div></div>
+            <div class="dg-tier"><div class="dg-tier-label"><strong>App</strong></div><div class="dg-tier-nodes">
+                <div class="dg-node dg-app"><span class="dg-text"><strong>S3 site bucket</strong><small>private; only CloudFront can read the HTML, CSS and JS</small></span></div>
+                <div class="dg-node dg-app"><span class="dg-text"><strong>Lambda Function URL</strong><small><code>GET</code>, <code>POST</code> and <code>DELETE /api/timestamps</code> (Node.js 22)</small></span></div>
+            </div></div>
+            <div class="dg-tier"><div class="dg-tier-label"><strong>Data</strong></div><div class="dg-tier-nodes">
+                <div class="dg-node dg-private"><span class="dg-text"><strong>DynamoDB</strong><small>on-demand table of task records; kept if the stack is deleted</small></span></div>
+            </div></div>
+
+            <h2>What happens when you record a task</h2>
+            <div class="dg-flow">
+                <div class="dg-step"><span class="dg-num">1</span><span class="dg-text"><strong>Record</strong><small>the task page sends <code>POST /api/timestamps</code> with the task name</small></span></div>
+                <span class="dg-arrow" aria-hidden="true">→</span>
+                <div class="dg-step"><span class="dg-num">2</span><span class="dg-text"><strong>Server time</strong><small>Lambda takes the time itself; the device's clock is never used</small></span></div>
+                <span class="dg-arrow" aria-hidden="true">→</span>
+                <div class="dg-step"><span class="dg-num">3</span><span class="dg-text"><strong>One-hour check</strong><small>a DynamoDB transaction writes the record only if the task's last record is over an hour old</small></span></div>
+                <span class="dg-arrow" aria-hidden="true">→</span>
+                <div class="dg-step"><span class="dg-num">4</span><span class="dg-text"><strong>History</strong><small>the page reloads the latest 10 records and shows them in local time</small></span></div>
+            </div>
+
+            <h2>API</h2>
+            <div class="table-wrap">
+                <table>
+                    <thead>
+                        <tr><th>Request</th><th>What it does</th></tr>
+                    </thead>
+                    <tbody>
+                        <tr><td><code>GET /api/timestamps?task=laundry</code></td><td>Returns the task's latest 10 records, newest first.</td></tr>
+                        <tr><td><code>POST /api/timestamps</code> <code>{"task":"laundry"}</code></td><td>Records the server's current time. <code>201</code> on success, <code>409</code> within an hour of the last record.</td></tr>
+                        <tr><td><code>DELETE /api/timestamps</code> <code>{"task":"laundry","id":"…"}</code></td><td>Deletes a record that is less than an hour old. <code>403</code> once it is older.</td></tr>
+                    </tbody>
+                </table>
+            </div>
+            <p>Task names are <code>laundry</code>, <code>guinea-pigs</code>, <code>hang-clothes</code> and <code>kaka-teeth</code>. Every API response is sent with <code>cache-control: no-store</code>.</p>
+
+            <h2>Data</h2>
+            <p>Each record is an item with the task as its partition key and <code>timestamp#request-id</code> as its sort key, so a query returns a task's records in time order. A separate <code>&lt;task&gt;-control</code> item holds the latest time for each task; the record and the control item are written in one transaction whose condition fails if the control item is less than an hour old. That makes the one-hour rule hold even when two people press Record at the same moment.</p>
+        </article>
+
+        <article class="dl-docs" id="tasks">
+            <h2>How tasks work</h2>
+            <p class="lead">Each task has a rolling target: it should be recorded again within that many hours of the last record.</p>
+            <div class="table-wrap">
+                <table>
+                    <thead>
+                        <tr><th>Task</th><th>Record it after</th><th>Target</th></tr>
+                    </thead>
+                    <tbody>
+                        <tr><td><a href="/laundry.html">Laundry</a></td><td>starting the laundry</td><td>every 40 hours</td></tr>
+                        <tr><td><a href="/guinea-pigs.html">Guinea pig cleaning</a></td><td>cleaning the cage and kitchen area for all six guinea pigs</td><td>every 70 hours</td></tr>
+                        <tr><td><a href="/hang-clothes.html">Hang clothes</a></td><td>hanging up the clothes</td><td>every 45 hours</td></tr>
+                        <tr><td><a href="/kaka-teeth.html">Kaka's teeth</a></td><td>brushing Kaka's teeth</td><td>every 100 hours</td></tr>
+                    </tbody>
+                </table>
+            </div>
+            <ul>
+                <li>The server records the time. A task cannot be recorded twice within one hour; other tasks are not affected.</li>
+                <li>A record can be deleted only during its first hour, after the browser asks for confirmation.</li>
+                <li>Each task page shows its 10 most recent records, newest first, in the visitor's time zone.</li>
+            </ul>
+            <p>The full rules are on the <a href="/rules.html">Rules</a> page.</p>
+        </article>
+
+        <article class="dl-docs" id="cost">
+            <h2>Cost</h2>
+            <p class="lead">Every part is billed per use, so the site costs next to nothing while nobody is using it.</p>
+            <ul>
+                <li>No servers, NAT gateways, load balancers or API Gateway: nothing has a fixed monthly fee.</li>
+                <li>Lambda, DynamoDB on-demand, S3 and CloudFront are charged by requests, storage, run time and data transfer.</li>
+                <li>The TLS certificate is free, and the Route 53 hosted zone is shared with the other dliu.com sites.</li>
+                <li>Pages are cached at the edge for up to a day; <code>app.js</code> and <code>styles.css</code> for 5 minutes in the browser. Each deploy clears the cache once.</li>
+            </ul>
+        </article>
+
+        <article class="dl-docs" id="security">
+            <h2>Security</h2>
+            <p class="lead">The site holds only task names and times. It has no accounts and no sign-in.</p>
+            <ul>
+                <li>Anyone who can open the site can record a task and delete a record during its first hour. The one-hour rules are enforced on the server, not only in the browser.</li>
+                <li>The site bucket blocks all public access; CloudFront reads it through an origin access identity.</li>
+                <li>All traffic is HTTPS; plain HTTP is redirected.</li>
+                <li>The Lambda function can read and write only its own table. Requests for an unknown task are rejected.</li>
+                <li>The table is retained if the CloudFormation stack is deleted, so records survive a redeploy.</li>
+            </ul>
+        </article>
+    </main>
+    <footer class="dl-footer">
+        <a class="dl-footer-logo" href="https://dliu.com" aria-label="dliu.com"><img src="https://files.dliu.com/dliu.com/favicon.png" alt="" width="24" height="24"></a>
+        <a href="https://dliu.com">dliu.com</a> · <a href="/docs">Docs</a> · <a href="/rules.html">Rules</a>
+    </footer>
+</body>
+
+</html>
