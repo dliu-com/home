@@ -2,15 +2,16 @@
 
 A small website for recording recurring home tasks. The home page links to separate trackers for laundry, guinea pig cleaning, hanging clothes, and Kaka teeth brushing. Laundry uses a rolling 40-hour target, guinea pig cleaning uses 70 hours, hanging clothes uses 45 hours, and Kaka teeth brushing uses 100 hours.
 
-The current user-facing rules are documented at [`/rules.html`](https://home.dliu.com/rules.html). How the site works (technical architecture, task rules, cost and security) is documented at [`/docs`](https://home.dliu.com/docs).
+The current user-facing rules are documented at [`/rules.html`](https://home.dliu.com/rules.html). How the site works (technical architecture, task rules, cost and security) is documented at [`/docs`](https://home.dliu.com/docs), and how it is tested at [`/docs/health`](https://home.dliu.com/docs/health) (see [Health checks](#health-checks)).
 
 ## Architecture
 
-The project follows the `home-site` layout:
+The project follows the [dliu-com](https://github.com/dliu-com/dliu-com) layout:
 
 - `src/` contains the static webpages. Each page has the same static `dl-nav` menu in its shared `dl-header` (see [Shared UI](#shared-ui)).
 - CloudFront serves the site from a private S3 bucket at `home.dliu.com`.
-- A viewer-request CloudFront Function (`PageRoutes`) serves the extensionless `/docs` (and `/docs/`) from `docs.html`; every other path is served as-is.
+- A viewer-request CloudFront Function (`PageRoutes`) serves the extensionless `/docs` and `/docs/health` (with or without a trailing `/`) from `docs.html` and `docs-health.html`; every other path is served as-is.
+- `GET /health` is a separate read-only Lambda (`cdk/lambda/health.js`) behind CloudFront (see [Health checks](#health-checks)).
 - `POST /api/timestamps` records the server's current time for the selected task through a Lambda Function URL.
 - `GET /api/timestamps` returns the selected task's latest 10 timestamps from DynamoDB.
 - `DELETE /api/timestamps` deletes a selected task record during its first hour, after browser confirmation.
@@ -28,10 +29,20 @@ Every page uses the shared dliu.com look ([spec](https://files.dliu.com/dliu.com
 - `src/styles.css` keeps only app-specific rules and uses the `--dl-*` variables, with no colours of its own.
 - When adding a page, copy the header and footer from an existing page and add it to the nav on every page. `cdk/test/shared-ui.test.ts` guards this.
 
+## Health checks
+
+[status.dliu.com](https://status.dliu.com) tests the site every 15 minutes as an anonymous guest, following the dliu.com health contract (`status/HEALTH.md` in the dliu.com workspace):
+
+- `src/docs-health.html` (`/docs/health`) explains the checks for people: a diagram, one plain line per function, and every technical detail folded in closed `<details>` blocks.
+- `src/docs/health.md` (`/docs/health.md`, served as `text/markdown; charset=utf-8`) is the full technical version for machines: functions (`pages`, `records`, `routing`, `https`), the guest-check table, the `/health` endpoint and what isn't tested. Guest checks are only `GET`/`HEAD` and never `POST` or `DELETE` a task record.
+- `GET /health` returns `application/health+json` (`200` for `pass`/`warn`, `503` for `fail`) and reports `records` from one DynamoDB `GetItem` of a fixed key (2 s timeout, `warn` over 1 s). It runs in its own Lambda that may only `dynamodb:GetItem`, behind an IAM-only Function URL reached through CloudFront origin access control. The `/health` behaviour has no origin request policy (no cookies, `Authorization` header or query string reach it) and a cache policy keyed on nothing with a 60 s TTL; the handler reads nothing from the request and reveals no names or records.
+- Keep the page and the Markdown file in sync. `cdk/test/health.test.ts` fails if either disappears, if they list different functions or checks, if a body marker is missing from its file, if `/health` starts reading the request or writing, or if its CloudFront behaviour starts forwarding cookies, headers or query strings.
+
 ## Caching
 
-- **Edge (CloudFront):** HTTP/2 and HTTP/3 are enabled. `app.js` and `styles.css` are uploaded with `Cache-Control: public, max-age=300, s-maxage=86400, stale-while-revalidate=86400`, so browsers keep them for 5 minutes and CloudFront for up to 1 day. HTML pages have no `Cache-Control` header and use CloudFront's default caching (up to 1 day at the edge).
+- **Edge (CloudFront):** HTTP/2 and HTTP/3 are enabled. `app.js`, `styles.css` and `docs/health.md` are uploaded with `Cache-Control: public, max-age=300, s-maxage=86400, stale-while-revalidate=86400`, so browsers keep them for 5 minutes and CloudFront for up to 1 day. HTML pages have no `Cache-Control` header and use CloudFront's default caching (up to 1 day at the edge).
 - **API:** `/api/*` is never cached (`CachingDisabled` policy, and responses send `cache-control: no-store`).
+- **Health:** `/health` is cached for 60 s at CloudFront, keyed on nothing.
 - **Clearing:** every deploy invalidates `/*` once, so changes show immediately.
 - **Automatic clearing (S3 events → CloudFront invalidation): not used.** The site bucket only changes through deploys, which already clear the whole cache. Task records live in DynamoDB, not S3. Adding automatic clearing would only spend the 1,000 free invalidation paths a month that all dliu.com sites share. Don't edit the bucket by hand; if you do, run a CloudFront invalidation yourself.
 
